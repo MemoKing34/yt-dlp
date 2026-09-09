@@ -14,7 +14,7 @@ class LividIE(InfoExtractor):
             'id': 'J09eQruc7E6u',
             'ext': 'mp4',
             'title': 'Livid Analytics',
-            'description': 'md5:d9379f9311b79078eaeec6b228f5e8f6',
+            'description': 'md5:2610fc3ff2deeb427051efcd86411614',
             'thumbnail': r're:https?://api\.livid\.com/v1/thumbnails/.*\.jpg$',
             'uploader_id': 'f0d8c8430a7340b09355e9c9ca629afd',
             'duration': 19,
@@ -34,6 +34,8 @@ class LividIE(InfoExtractor):
             'description': 'md5:ebb3481475b337bdffae01644f2f9280',
             'thumbnail': r're:https?://api\.livid\.com/v1/thumbnails/.*\.jpg$',
             'uploader_id': '9eebf39a8c1d43819626b266e718a445',
+            'timestamp': 1788791315,
+            'upload_date': '20260907',
         },
         'params': {
             'skip_download': True,
@@ -124,14 +126,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
         for lang, value in subs2.items():
             subtitles.setdefault(lang, []).extend(value)
 
+        thumbnails = json_ld.get('thumbnails', [])
+        thumbnails.extend([
+            {'url': url_or_none(self._og_search_thumbnail(webpage))},
+            {'url': small_thumbnail, 'preference': -2},
+        ])
+
         return {
             'id': video_id,
             'title': title,
             'description': description,
-            'thumbnails': json_ld.get('thumbnails', []).extend([
-                {'url': url_or_none(self._og_search_thumbnail(webpage))},
-                {'url': small_thumbnail, 'preference': -2},
-            ]),
+            'thumbnails': thumbnails,
             'timestamp': timestamp,
             'duration': json_ld.get('duration'),
             'width': json_ld.get('width'),
