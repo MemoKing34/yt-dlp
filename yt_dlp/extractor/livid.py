@@ -3,7 +3,7 @@ import os
 import re
 
 from .common import InfoExtractor
-from ..utils import ass_subtitles_timecode, float_or_none, str_or_none, traverse_obj, url_or_none
+from ..utils import ass_subtitles_timecode, float_or_none, parse_iso8601, str_or_none, traverse_obj, url_or_none
 
 
 class LividIE(InfoExtractor):
@@ -101,17 +101,22 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
         video_id = self._match_id(url)
         webpage = self._download_webpage(url, video_id)
 
-        title = self._generic_title(url, webpage)
-        description = self._html_search_meta(['description', 'og:description', 'twitter:description'], webpage)
-        m3u8_url = self._search_regex(r'src\s*:\s*(["\'])(?P<url>[^"\']*m3u8)\1', webpage, 'source', group='url')
+        json_ld = self._search_json_ld(webpage, video_id, fatal=False, default={})
+        title = json_ld.get('title') or self._generic_title(url, webpage)
+        description = (json_ld.get('description')
+                       or self._html_search_meta(['description', 'og:description', 'twitter:description'], webpage))
+        uploader_id = self._search_regex(r'organizationId\s*:\s*(["\'])(?P<uploader_id>[^"\']*)\1',
+                                         webpage, 'uploader id', default=None, group='uploader_id')
+        timestamp = (json_ld.get('timestamp')
+                     or parse_iso8601(self._search_regex(r'createdAt\s*:\s*(["\'])(?P<upload_date>[^"\']*)\1',
+                                                         webpage, 'upload date', default=None, group='upload_date')))
+        small_thumbnail = self._search_regex(r'srcSmall\s*:\s*(["\'])(?P<url>[^"\']*)\1', webpage, 'thumbnail url', group='url')
+
+        m3u8_url = self._search_regex(r'src\s*:\s*(["\'])(?P<url>[^"\']*m3u8)\1', webpage, 'm3u8 url', group='url')
         formats, subtitles = self._extract_m3u8_formats_and_subtitles(m3u8_url, video_id)
         for liste in subtitles.values():
             for sub_dict in liste:
                 sub_dict.setdefault('id', video_id)
-        uploader_id = self._search_regex(r'organizationId\s*:\s*(["\'])(?P<uploader_id>[^"\']*)\1',
-                                         webpage, 'uploader id', default=None, group='uploader_id')
-        small_thumbnail = self._search_regex(r'srcSmall\s*:\s*(["\'])(?P<url>[^"\']*)\1', webpage, 'source', group='url')
-        json_ld = self._search_json_ld(webpage, video_id, fatal=False, default={})
         uuid = traverse_obj(re.findall(r'id\s*:\s*(["\'])(?P<id>[^"\']*)\1', webpage), (2, 1))
         transcripts = self._download_json(f'https://api.livid.com/v1/videos/id/{uuid}/transcripts', video_id) or {}
 
@@ -121,13 +126,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
 
         return {
             'id': video_id,
-            **json_ld,
             'title': title,
             'description': description,
-            'thumbnails': [
+            'thumbnails': json_ld.get('thumbnails', []).extend([
                 {'url': url_or_none(self._og_search_thumbnail(webpage))},
                 {'url': small_thumbnail, 'preference': -2},
-            ],
+            ]),
+            'timestamp': timestamp,
+            'duration': json_ld.get('duration'),
+            'width': json_ld.get('width'),
+            'height': json_ld.get('height'),
             'formats': formats,
             'subtitles': subtitles,
             'automatic_captions': self.extract_automatic_captions(uuid, transcripts, video_id),
