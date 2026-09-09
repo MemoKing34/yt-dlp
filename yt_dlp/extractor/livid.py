@@ -103,6 +103,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
         video_id = self._match_id(url)
         webpage = self._download_webpage(url, video_id)
 
+        if 'Sorry, we couldn’t find that video' in webpage:
+            self.raise_login_required('This video is private')
+
         json_ld = self._search_json_ld(webpage, video_id, fatal=False, default={})
         title = json_ld.get('title') or self._generic_title(url, webpage)
         description = (json_ld.get('description')
