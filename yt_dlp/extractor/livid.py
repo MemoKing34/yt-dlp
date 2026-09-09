@@ -117,6 +117,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
         json_ld = self._search_json_ld(webpage, video_id, fatal=False, default={})
         title = json_ld.get('title') or self._generic_title(url, webpage)
         description = (json_ld.get('description')
+                       or self._search_regex(r'descriptionText\s*:\s*(["\'])(?P<description>[^"\']*)\1',
+                                             webpage, 'description', fatal=False, default=None)
                        or self._html_search_meta(['description', 'og:description', 'twitter:description'], webpage))
         uploader_id = self._search_regex(r'organizationId\s*:\s*(["\'])(?P<uploader_id>[^"\']*)\1',
                                          webpage, 'uploader id', default=None, group='uploader_id')
