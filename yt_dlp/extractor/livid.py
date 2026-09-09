@@ -1,3 +1,4 @@
+import functools
 import json
 import os
 import re
@@ -50,10 +51,11 @@ class LividIE(InfoExtractor):
         'skip': 'Private video',
     }]
 
-    def _get_subtitles(self, uuid: str, transcripts: dict, video_id: str) -> dict[str, list[dict]]:
+    def _fetch_subtitles(self, uuid: str, transcripts: dict, video_id: str, is_auto_subs: bool = False) -> dict[str, list[dict]]:
         subtitles = {}
         for transcript in transcripts.get('transcripts', []):
-            if transcript.get('source') == 'auto':
+            if ((is_auto_subs is False and transcript.get('source') == 'auto')
+                    or (is_auto_subs and transcript.get('source') != 'auto')):
                 continue
             language = traverse_obj(transcript, ('language', {str_or_none}))
             segments = traverse_obj(
@@ -69,24 +71,8 @@ class LividIE(InfoExtractor):
             ]
         return subtitles
 
-    def _get_automatic_captions(self, uuid: str, transcripts: dict, video_id: str) -> dict[str, list[dict]]:
-        captions = {}
-        for transcript in transcripts.get('transcripts', []):
-            if transcript.get('source') != 'auto':
-                continue
-            language = traverse_obj(transcript, ('language', {str_or_none}))
-            segments = traverse_obj(
-                self._download_json(f'https://api.livid.com/v1/videos/id/{uuid}/transcript-segments?language={language}', video_id),
-                ('segments', {list}))
-            if segments is None:
-                continue
-            if language == 'unknown':
-                language = 'und'
-            captions[language] = [
-                {'ext': 'json', 'data': json.dumps(segments)},
-                {'ext': 'ass', 'data': self._generate_ass_subtitles(segments)},
-            ]
-        return captions
+    _get_subtitles = functools.partialmethod(_fetch_subtitles, is_auto_subs=False)
+    _get_automatic_captions = functools.partialmethod(_fetch_subtitles, is_auto_subs=True)
 
     def _generate_ass_subtitles(self, segments: list[dict[str, float | str]]):
         ass = f'''[Script Info]
