@@ -25,6 +25,7 @@ class LividIE(InfoExtractor):
             'skip_download': True,
         },
     }, {
+        'note': 'Embed link some metadata is missing',
         'url': 'https://livid.com/embed/lDlnp0fM1omO',
         'md5': 'e6736151653f657b4d7069a77f7cd716',
         'info_dict': {
@@ -40,6 +41,13 @@ class LividIE(InfoExtractor):
         'params': {
             'skip_download': True,
         },
+    }, {
+        'url': 'https://livid.com/watch/T3PPnfE7UKk8',
+        'info_dict': {
+            'id': 'T3PPnfE7UKk8',
+            'ext': 'mp4',
+        },
+        'skip': 'Private video',
     }]
 
     def _get_subtitles(self, uuid: str, transcripts: dict, video_id: str) -> dict[str, list[dict]]:
